@@ -1,0 +1,66 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: driver-recall-system
+  datasource:
+    url: jdbc:mysql://localhost:3306/driver_recall?useUnicode=true&characterEncoding=UTF-8&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
+    username: root
+    password: 123456
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    hikari:
+      maximum-pool-size: 20
+      minimum-idle: 5
+      connection-timeout: 30000
+      validation-timeout: 3000
+  jackson:
+    date-format: yyyy-MM-dd HH:mm:ss
+    time-zone: Asia/Shanghai
+    default-property-inclusion: non_null
+
+mybatis-plus:
+  mapper-locations: classpath*:/mapper/**/*.xml
+  type-aliases-package: com.competition.invoice.entity
+  configuration:
+    map-underscore-to-camel-case: true
+  global-config:
+    db-config:
+      id-type: auto
+
+shedlock:
+  table-name: shedlock
+  lock-at-most-for: PT1H
+  lock-at-least-for: PT5M
+
+# 大模型 (DeepSeek Anthropic 兼容接口)
+external:
+  llm:
+    base-url: https://api.deepseek.com/anthropic
+    api-key: sk-c4b9fa5a7efd4a0eae955cefc8f6e9dc   # 替换为实际 Key
+    model: deepseek-chat
+    max-tokens: 1024
+    max-concurrent: 5
+    rate-limit-ms: 300
+
+recall:
+  high-potential-threshold: 60.0   # 绝对阈值：分数>此值即为高潜力
+  supply-demand-ratio-threshold: 1.5
+  recent-active-days: 7
+  max-last-order-days: 7
+  top-n-count: 3                   # Top-N模式：取前N名, 0=不启用(用阈值)
+  top-n-min-score: 40.0            # Top-N模式最低分数线
+
+management:
+  health:
+    db:
+      enabled: false
+  endpoints:
+    web:
+      exposure:
+        include: info
+
+logging:
+  level:
+    root: INFO
+    com.competition.invoice: DEBUG

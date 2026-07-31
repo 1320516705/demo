@@ -1,0 +1,124 @@
+server:
+  port: 8080
+  servlet:
+    context-path: /
+
+spring:
+  application:
+    name: driver-recall-system
+
+  # 主数据源
+  datasource:
+    url: jdbc:mysql://localhost:3306/driver_recall?useUnicode=true&characterEncoding=UTF-8&serverTimezone=Asia/Shanghai
+    username: root
+    password: 123456
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    hikari:
+      maximum-pool-size: 20
+      minimum-idle: 5
+      idle-timeout: 300000
+      connection-timeout: 30000
+      max-lifetime: 1800000
+
+  # Jackson 配置
+  jackson:
+    date-format: yyyy-MM-dd HH:mm:ss
+    time-zone: Asia/Shanghai
+    default-property-inclusion: non_null
+
+# MyBatis-Plus 配置
+mybatis-plus:
+  mapper-locations: classpath*:/mapper/**/*.xml
+  type-aliases-package: com.competition.invoice.entity
+  configuration:
+    map-underscore-to-camel-case: true
+    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+  global-config:
+    db-config:
+      id-type: auto
+      logic-delete-field: deleted
+      logic-delete-value: 1
+      logic-not-delete-value: 0
+
+# ShedLock 分布式锁
+shedlock:
+  table-name: shedlock
+  lock-at-most-for: PT1H
+  lock-at-least-for: PT5M
+
+# 外部服务配置
+external:
+  # 数仓数据源
+  warehouse:
+    jdbc-url: jdbc:mysql://${DW_HOST:localhost}:3306/dw?useSSL=false&serverTimezone=Asia/Shanghai&characterEncoding=UTF-8
+    username: ${DW_USERNAME:}
+    password: ${DW_PASSWORD:}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+
+  # 神经网络推理服务
+  neural-network:
+    base-url: ${NN_BASE_URL:http://localhost:9090}
+    api-key: ${NN_API_KEY:}
+    connect-timeout: 30s
+    read-timeout: 60s
+    batch-size: 100
+    max-retries: 3
+
+  # 大模型服务 (Claude API)
+  llm:
+    provider: anthropic
+    base-url: https://api.anthropic.com
+    api-key: ${ANTHROPIC_API_KEY:}
+    model: claude-sonnet-4-20250514
+    max-tokens: 1024
+    max-concurrent: 5
+    rate-limit-ms: 300
+    max-retries: 2
+
+  # MCP 服务 (应急实时查询)
+  mcp:
+    base-url: ${MCP_BASE_URL:http://localhost:8081}
+    query-timeout: 15s
+
+  # 高德地图 API
+  amap:
+    api-key: ${AMAP_API_KEY:}
+    base-url: https://restapi.amap.com
+
+# 调度配置
+scheduling:
+  daily-recall:
+    cron: "0 0 7 * * ?"
+    enabled: ${DAILY_RECALL_ENABLED:true}
+
+# 召回阈值配置
+recall:
+  high-potential-threshold: 60.0
+  supply-demand-ratio-threshold: 1.5
+  recent-active-days: 7
+  max-last-order-days: 7
+
+# Actuator 监控
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus,metrics
+  metrics:
+    export:
+      prometheus:
+        enabled: true
+
+# SpringDoc OpenAPI
+springdoc:
+  api-docs:
+    path: /api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+
+# 日志
+logging:
+  level:
+    root: INFO
+    com.competition.invoice: DEBUG
+    com.baomidou.mybatisplus: DEBUG
