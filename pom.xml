@@ -16,7 +16,7 @@
     <version>1.0-SNAPSHOT</version>
     <packaging>jar</packaging>
     <name>driver-recall-system</name>
-    <description>离线司机智能召回系统</description>
+    <description>司机智能召回系统</description>
 
     <properties>
         <java.version>17</java.version>

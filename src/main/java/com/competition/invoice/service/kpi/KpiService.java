@@ -1,47 +1,48 @@
 package com.competition.invoice.service.kpi;
 
-import com.competition.invoice.entity.RecallKpi;
-import com.competition.invoice.mapper.RecallKpiMapper;
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.competition.invoice.entity.DriverDailySnapshot;
+import com.competition.invoice.mapper.DriverDailySnapshotMapper;
 import com.competition.invoice.model.vo.KpiCardVO;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.List;
 
-/**
- * KPI 服务
- */
 @Service
 @RequiredArgsConstructor
 public class KpiService {
 
-    private final RecallKpiMapper recallKpiMapper;
+    private final DriverDailySnapshotMapper snapshotMapper;
 
-    /**
-     * 获取 KPI 卡片数据
-     */
     public KpiCardVO getSummary(LocalDate dataDate) {
-        RecallKpi kpi = recallKpiMapper.findByDataDate(dataDate.toString());
-        if (kpi == null) {
-            return emptyKpi();
+        List<DriverDailySnapshot> list = snapshotMapper.selectList(
+                new LambdaQueryWrapper<DriverDailySnapshot>()
+                        .eq(DriverDailySnapshot::getSnapshotDate, dataDate));
+
+        KpiCardVO vo = new KpiCardVO();
+        if (list.isEmpty()) {
+            vo.setRecallableCount(0);
+            vo.setOnlineYesterdayNotToday(0);
+            vo.setExpectedSuccessRate(BigDecimal.ZERO);
+            return vo;
         }
 
-        KpiCardVO vo = new KpiCardVO();
-        vo.setRecallableCount(kpi.getRecallableCount());
-        vo.setExpectedSuccessRate(kpi.getExpectedSuccessRate());
-        vo.setTodayBudget(kpi.getTodayBudget());
-        vo.setRuleBasedCount(kpi.getRuleBasedCount());
-        vo.setImprovementPct(kpi.getImprovementPct());
-        return vo;
-    }
+        vo.setRecallableCount(list.size());
 
-    private KpiCardVO emptyKpi() {
-        KpiCardVO vo = new KpiCardVO();
-        vo.setRecallableCount(0);
-        vo.setExpectedSuccessRate(java.math.BigDecimal.ZERO);
-        vo.setTodayBudget(java.math.BigDecimal.ZERO);
-        vo.setRuleBasedCount(0);
-        vo.setImprovementPct(java.math.BigDecimal.ZERO);
+        // 近7天在线但今天不在线
+        long onlineNotToday = list.stream()
+                .filter(s -> s.getOnlineCount7d() != null && s.getOnlineCount7d() > 0)
+                .filter(s -> s.getLastOrderTime() == null
+                        || s.getLastOrderTime().toLocalDate().isBefore(dataDate))
+                .count();
+        vo.setOnlineYesterdayNotToday((int) onlineNotToday);
+
+        // 默认预期成功率
+        vo.setExpectedSuccessRate(BigDecimal.valueOf(0.38));
+
         return vo;
     }
 }

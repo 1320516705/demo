@@ -56,14 +56,16 @@ public class Step5_LLMStrategy {
         log.info("[Step5] 开始策略生成, mode={}, dataDate={}, threshold={}, topN={}",
                 useRealLlm ? "CLAUDE" : "LOCAL_RULE_ENGINE", dataDate, threshold, topN);
 
-        // 查询高潜力司机（与 Step4 使用相同阈值），按分数降序
-        List<RecallList> highPotential = recallListMapper.selectList(
-                new LambdaQueryWrapper<RecallList>()
-                        .eq(RecallList::getDataDate, dataDate)
-                        .gt(RecallList::getRecallScore, threshold)
-                        .isNull(RecallList::getPersonaTag)
-                        .orderByDesc(RecallList::getRecallScore)
-                        .last(topN > 0 ? "LIMIT " + topN : ""));
+        // 本地模式：所有通过阈值的都生成策略；Claude模式：只处理Top-N节约成本
+        LambdaQueryWrapper<RecallList> qw = new LambdaQueryWrapper<RecallList>()
+                .eq(RecallList::getDataDate, dataDate)
+                .gt(RecallList::getRecallScore, threshold)
+                .isNull(RecallList::getStrategyScript)
+                .orderByDesc(RecallList::getRecallScore);
+        if (useRealLlm && topN > 0) {
+            qw.last("LIMIT " + topN);
+        }
+        List<RecallList> highPotential = recallListMapper.selectList(qw);
 
         if (highPotential.isEmpty()) {
             log.info("[Step5] 无高潜力司机需要生成策略");
@@ -140,8 +142,6 @@ public class Step5_LLMStrategy {
         recallListMapper.update(null,
                 new LambdaUpdateWrapper<RecallList>()
                         .eq(RecallList::getId, rl.getId())
-                        .set(RecallList::getPersonaTag, parsed.getPersonaTag())
-                        .set(RecallList::getPersonaConfidence, parsed.getPersonaConfidence())
                         .set(RecallList::getStrategyScript, parsed.getStrategyScript())
                         .set(RecallList::getRecommendedChannel, parsed.getRecommendedChannel())
                         .set(RecallList::getLlmResponseRaw, rawJson));

@@ -3,8 +3,11 @@ package com.competition.invoice.service.recall;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.competition.invoice.common.BizException;
+import com.competition.invoice.entity.DriverDailySnapshot;
 import com.competition.invoice.entity.RecallList;
+import com.competition.invoice.mapper.DriverDailySnapshotMapper;
 import com.competition.invoice.mapper.RecallListMapper;
 import com.competition.invoice.model.enums.OutreachChannel;
 import com.competition.invoice.model.enums.OutreachStatus;
@@ -17,6 +20,9 @@ import org.springframework.stereotype.Service;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 /**
  * 召回名单服务
@@ -27,6 +33,7 @@ import java.time.LocalDateTime;
 public class RecallListService {
 
     private final RecallListMapper recallListMapper;
+    private final DriverDailySnapshotMapper snapshotMapper;
 
     /**
      * 分页查询召回列表（支持多条件筛选 + 排序）
@@ -41,9 +48,6 @@ public class RecallListService {
         qw.eq(RecallList::getDataDate, dataDate);
 
         // 筛选条件
-        if (personaTag != null && !personaTag.isEmpty()) {
-            qw.eq(RecallList::getPersonaTag, personaTag);
-        }
         if (outreachStatus != null && !outreachStatus.isEmpty()) {
             qw.eq(RecallList::getOutreachStatus, outreachStatus);
         }
@@ -70,7 +74,21 @@ public class RecallListService {
         IPage<RecallList> result = recallListMapper.selectPage(
                 new Page<>(page, size), qw);
 
-        return result.convert(this::toVO);
+        // 批量查询对应的快照数据，合并业务字段
+        List<String> driverIds = result.getRecords().stream()
+                .map(RecallList::getDriverId).collect(Collectors.toList());
+        Map<String, DriverDailySnapshot> snapshotMap = Map.of();
+        if (!driverIds.isEmpty()) {
+            snapshotMap = snapshotMapper.selectList(
+                    new LambdaQueryWrapper<DriverDailySnapshot>()
+                            .eq(DriverDailySnapshot::getSnapshotDate, dataDate)
+                            .in(DriverDailySnapshot::getDriverId, driverIds))
+                    .stream().collect(Collectors.toMap(
+                            DriverDailySnapshot::getDriverId, s -> s, (a, b) -> a));
+        }
+        final Map<String, DriverDailySnapshot> finalMap = snapshotMap;
+
+        return result.convert(rl -> toVO(rl, finalMap.get(rl.getDriverId())));
     }
 
     /**
@@ -81,8 +99,12 @@ public class RecallListService {
         if (rl == null) {
             throw new BizException(404, "司机召回记录不存在");
         }
-        RecallListVO vo = toVO(rl);
-        vo.setLlmResponseRaw(rl.getLlmResponseRaw()); // 详情返回 LLM 原始响应
+        DriverDailySnapshot s = snapshotMapper.selectOne(
+                new LambdaQueryWrapper<DriverDailySnapshot>()
+                        .eq(DriverDailySnapshot::getSnapshotDate, rl.getDataDate())
+                        .eq(DriverDailySnapshot::getDriverId, rl.getDriverId()));
+        RecallListVO vo = toVO(rl, s);
+        vo.setLlmResponseRaw(rl.getLlmResponseRaw());
         return vo;
     }
 
@@ -134,25 +156,29 @@ public class RecallListService {
         return new int[]{success, fail};
     }
 
-    private RecallListVO toVO(RecallList rl) {
+    private RecallListVO toVO(RecallList rl, DriverDailySnapshot s) {
         RecallListVO vo = new RecallListVO();
         vo.setId(rl.getId());
         vo.setDriverId(rl.getDriverId());
         vo.setDriverName(rl.getDriverName());
         vo.setPhone(rl.getPhone());
+
+        // 完单数据
+        if (s != null) {
+            vo.setDailyOrders(s.getDailyOrders());
+            vo.setMorningPeakOrders(s.getMorningPeakOrders());
+            vo.setEveningPeakOrders(s.getEveningPeakOrders());
+            vo.setDailyOnlineHours(s.getDailyOnlineHours());
+            vo.setBaseIncome(s.getBaseIncome());
+            vo.setBonusIncome(s.getBonusIncome());
+        }
+
         vo.setRecallScore(rl.getRecallScore());
-        vo.setPersonaTag(rl.getPersonaTag());
         vo.setStrategyScript(rl.getStrategyScript());
         vo.setRecommendedChannel(rl.getRecommendedChannel());
         vo.setOutreachStatus(rl.getOutreachStatus());
         vo.setOutreachTime(rl.getOutreachTime());
 
-        // 中文标签
-        if (rl.getPersonaTag() != null) {
-            try {
-                vo.setPersonaTagLabel(PersonaTag.valueOf(rl.getPersonaTag()).getLabel());
-            } catch (IllegalArgumentException ignored) {}
-        }
         if (rl.getRecommendedChannel() != null) {
             try {
                 vo.setRecommendedChannelLabel(OutreachChannel.valueOf(rl.getRecommendedChannel()).getLabel());

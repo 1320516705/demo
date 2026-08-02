@@ -8,7 +8,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 /**
- * 司机每日快照（从数仓拉取）
+ * 司机每日快照
  */
 @Data
 @TableName("t_driver_daily_snapshot")
@@ -22,6 +22,9 @@ public class DriverDailySnapshot {
     private String driverName;
     private String phone;
 
+    /** 城市 */
+    private String city;
+
     /** 近7天上线次数 */
     @TableField("online_count_7d")
     private Integer onlineCount7d;
@@ -29,10 +32,36 @@ public class DriverDailySnapshot {
     /** 最后完单时间 */
     private LocalDateTime lastOrderTime;
 
-    /** H3网格索引(level 8) */
-    private String h3Index;
+    /** 日完单量 */
+    private Integer dailyOrders;
 
-    /** 所在H3网格供需比 */
+    /** 早高峰完单量(7-9点) */
+    private Integer morningPeakOrders;
+
+    /** 晚高峰完单量(17-19点) */
+    private Integer eveningPeakOrders;
+
+    /** 日在线时长(小时) */
+    private BigDecimal dailyOnlineHours;
+
+    /** 早高峰在线时长 */
+    @TableField("morning_peak_online_hours")
+    private BigDecimal morningPeakOnlineHours;
+
+    /** 晚高峰在线时长 */
+    @TableField("evening_peak_online_hours")
+    private BigDecimal eveningPeakOnlineHours;
+
+    /** 基本收入 */
+    private BigDecimal baseIncome;
+
+    /** 奖励收入 */
+    private BigDecimal bonusIncome;
+
+    /** 免佣收入 */
+    private BigDecimal commissionFreeIncome;
+
+    /** 所在区域供需比 */
     @TableField("supply_demand_ratio")
     private BigDecimal supplyDemandRatio;
 
@@ -64,7 +93,7 @@ public class DriverDailySnapshot {
     @TableField("peak_hour_pct")
     private BigDecimal peakHourPct;
 
-    /** 特征向量（JSON格式，供NN推理） */
+    /** 特征向量（NN推理用，管道实时计算） */
     private String featureVector;
 
     private LocalDateTime createdAt;

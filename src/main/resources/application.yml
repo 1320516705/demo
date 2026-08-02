@@ -48,7 +48,7 @@ recall:
   supply-demand-ratio-threshold: 1.5
   recent-active-days: 7
   max-last-order-days: 7
-  top-n-count: 3                   # Top-N模式：取前N名, 0=不启用(用阈值)
+  top-n-count: 100                   # Top-N模式：取前N名, 0=不限制(全量)
   top-n-min-score: 40.0            # Top-N模式最低分数线
 
 management:

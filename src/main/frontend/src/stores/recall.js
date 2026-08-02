@@ -4,7 +4,7 @@ import * as recallApi from '@/api/recall'
 import * as kpiApi from '@/api/kpi'
 import * as chartApi from '@/api/chart'
 import * as emergencyApi from '@/api/emergency'
-import dayjs from 'dayjs'
+import axios from 'axios'
 
 export const useRecallStore = defineStore('recall', () => {
   // --- State ---
@@ -20,14 +20,13 @@ export const useRecallStore = defineStore('recall', () => {
   const driverList = ref([])
   const driverListPage = ref({ page: 1, size: 20, total: 0 })
   const driverListLoading = ref(false)
-  const filters = ref({ personaTag: '', outreachStatus: '', scoreRange: [0, 100], keyword: '' })
+  const filters = ref({ outreachStatus: '', scoreRange: [0, 100], keyword: '' })
   const sortField = ref('recallScore')
   const sortOrder = ref('desc')
 
   // Charts
-  const heatmapPoints = ref([])
+  const cityHeatData = ref([])
   const trendData = ref(null)
-  const personaDistribution = ref(null)
   const statusDistribution = ref(null)
 
   // Emergency
@@ -61,7 +60,6 @@ export const useRecallStore = defineStore('recall', () => {
         sort: sortF,
         order: sortO
       }
-      if (filters.value.personaTag) params.personaTag = filters.value.personaTag
       if (filters.value.outreachStatus) params.outreachStatus = filters.value.outreachStatus
       if (filters.value.keyword) params.keyword = filters.value.keyword
       if (filters.value.scoreRange[0] > 0) params.scoreMin = filters.value.scoreRange[0]
@@ -76,10 +74,10 @@ export const useRecallStore = defineStore('recall', () => {
     }
   }
 
-  async function fetchHeatmap(date) {
+  async function fetchCityHeatmap(date) {
     try {
-      const res = await recallApi.getHeatmapData(date || currentDate.value)
-      heatmapPoints.value = res.data.data?.points || []
+      const res = await axios.get('/api/v1/chart/city-heatmap', { params: { dataDate: date || currentDate.value } })
+      cityHeatData.value = res.data.data || []
     } catch (e) { /* ignore */ }
   }
 
@@ -94,8 +92,7 @@ export const useRecallStore = defineStore('recall', () => {
     try {
       const res = await chartApi.getDistribution(date || currentDate.value, type)
       const data = res.data.data
-      if (type === 'persona') personaDistribution.value = data
-      else if (type === 'status') statusDistribution.value = data
+      if (type === 'status') statusDistribution.value = data
     } catch (e) { /* ignore */ }
   }
 
@@ -141,16 +138,16 @@ export const useRecallStore = defineStore('recall', () => {
   }
 
   function updateFilters(newFilters) { Object.assign(filters.value, newFilters) }
-  function resetFilters() { filters.value = { personaTag: '', outreachStatus: '', scoreRange: [0, 100], keyword: '' } }
+  function resetFilters() { filters.value = { outreachStatus: '', scoreRange: [0, 100], keyword: '' } }
   function setDate(date) { currentDate.value = date }
   function setMode(m) { mode.value = m }
 
   return {
     currentDate, mode, kpiData, kpiLoading,
     driverList, driverListPage, driverListLoading, filters, sortField, sortOrder,
-    heatmapPoints, trendData, personaDistribution, statusDistribution,
+    cityHeatData, trendData, statusDistribution,
     emergencySessionId, emergencyStatus, emergencyResults,
-    fetchKpi, fetchDriverList, fetchHeatmap, fetchTrend, fetchDistribution,
+    fetchKpi, fetchDriverList, fetchCityHeatmap, fetchTrend, fetchDistribution,
     singleOutreach, batchOutreach,
     triggerEmergency, startEmergencyPoll, stopEmergencyPoll,
     updateFilters, resetFilters, setDate, setMode

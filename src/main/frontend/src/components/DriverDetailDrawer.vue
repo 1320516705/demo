@@ -7,7 +7,6 @@
         <el-descriptions-item label="召回潜力分">
           <el-tag :type="scoreTagType">{{ driver.recallScore }}</el-tag>
         </el-descriptions-item>
-        <el-descriptions-item label="人设标签">{{ driver.personaTagLabel || '-' }}</el-descriptions-item>
         <el-descriptions-item label="推荐渠道">{{ driver.recommendedChannelLabel || '-' }}</el-descriptions-item>
         <el-descriptions-item label="触达状态">{{ driver.outreachStatusLabel || '-' }}</el-descriptions-item>
       </el-descriptions>

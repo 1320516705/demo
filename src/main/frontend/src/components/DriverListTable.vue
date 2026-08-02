@@ -15,13 +15,41 @@
 
       <el-table-column type="selection" width="40" />
 
-      <el-table-column prop="driverName" label="司机" width="90" sortable="custom">
+      <el-table-column prop="driverName" label="司机" width="80" sortable="custom">
         <template #default="{ row }">
           <span class="driver-name">{{ row.driverName }}</span>
         </template>
       </el-table-column>
 
-      <el-table-column prop="recallScore" label="召回分" width="130" sortable="custom">
+      <el-table-column label="日完单" width="90" align="center" sortable="custom">
+        <template #default="{ row }">
+          <el-progress :percentage="orderLevel(row.dailyOrders)" :stroke-width="6" :show-text="false"
+            :color="['#91cc75','#fac858','#f56c6c'][orderLevel(row.dailyOrders)>6?0:orderLevel(row.dailyOrders)>3?1:2]" />
+          <span class="level-text">{{ orderLabel(row.dailyOrders) }}</span>
+        </template>
+      </el-table-column>
+
+      <el-table-column label="高峰占比" width="85" align="center">
+        <template #default="{ row }">
+          <span class="peak-ratio">{{ peakRatio(row) }}</span>
+        </template>
+      </el-table-column>
+
+      <el-table-column label="在线" width="90" align="center" sortable="custom">
+        <template #default="{ row }">
+          <el-progress :percentage="onlinePct(row.dailyOnlineHours)" :stroke-width="6" :show-text="false"
+            :color="onlinePct(row.dailyOnlineHours)>70?'#67c23a':onlinePct(row.dailyOnlineHours)>40?'#e6a23c':'#f56c6c'" />
+          <span class="level-text">{{ onlineLabel(row.dailyOnlineHours) }}</span>
+        </template>
+      </el-table-column>
+
+      <el-table-column label="收入等级" width="85" align="center">
+        <template #default="{ row }">
+          <el-tag :type="incomeType(row)" size="small" effect="plain">{{ incomeLabel(row) }}</el-tag>
+        </template>
+      </el-table-column>
+
+      <el-table-column prop="recallScore" label="召回分" width="110" sortable="custom">
         <template #default="{ row }">
           <div class="score-cell">
             <el-progress :percentage="Number(row.recallScore)" :stroke-width="7"
@@ -31,16 +59,7 @@
         </template>
       </el-table-column>
 
-      <el-table-column prop="personaTagLabel" label="画像" width="110">
-        <template #default="{ row }">
-          <el-tag v-if="row.personaTag" :type="personaType(row.personaTag)" size="small" effect="plain">
-            {{ row.personaTagLabel || row.personaTag }}
-          </el-tag>
-          <span v-else class="muted">—</span>
-        </template>
-      </el-table-column>
-
-      <el-table-column prop="strategyScript" label="召回话术" min-width="200" show-overflow-tooltip>
+      <el-table-column prop="strategyScript" label="召回话术" min-width="240" show-overflow-tooltip>
         <template #default="{ row }">
           <span v-if="row.strategyScript" class="script-text">{{ row.strategyScript }}</span>
           <span v-else class="muted">待生成</span>
@@ -103,10 +122,6 @@ function onPageChange() {
 function scoreColor(v) {
   const s = Number(v); if (s >= 80) return '#67c23a'; if (s >= 60) return '#e6a23c'; return '#f56c6c'
 }
-function personaType(t) {
-  const m = { PRICE_SENSITIVE:'warning', TIME_SENSITIVE:'', WAY_HOME:'success', WEEKEND_PART_TIME:'info', STABLE_FULL_TIME:'primary' }
-  return m[t] || ''
-}
 function statusType(s) {
   const m = { PENDING:'warning', CONTACTED:'primary', AGREED:'success', DECLINED:'danger', NO_RESPONSE:'info' }
   return m[s] || 'info'
@@ -114,6 +129,22 @@ function statusType(s) {
 function rowClass({ row }) {
   if (row.outreachStatus === 'AGREED') return 'row-agreed'
   return ''
+}
+
+// 脱敏函数
+function orderLevel(v) { if (!v||v<=2) return 2; if (v<=4) return 5; if (v<=6) return 8; return 10 }
+function orderLabel(v) { if (!v||v<=2) return '少'; if (v<=4) return '中'; if (v<=6) return '多'; return '很多' }
+function peakRatio(row) {
+  const m = row.morningPeakOrders||0, e = row.eveningPeakOrders||0
+  if (m+e===0) return '—'; if (m>e) return '早>晚'; if (e>m) return '晚>早'; return '均衡'
+}
+function onlinePct(v) { if (!v) return 2; return Math.min(10, Math.round(Number(v)*10)) }
+function onlineLabel(v) { if (!v||v<4) return '低'; if (v<8) return '中'; return '高' }
+function incomeType(row) {
+  const v = Number(row.baseIncome||0); if (v>200) return 'success'; if (v>120) return ''; return 'info'
+}
+function incomeLabel(row) {
+  const v = Number(row.baseIncome||0); if (v>200) return '高'; if (v>120) return '中'; return '低'
 }
 </script>
 
@@ -127,6 +158,10 @@ function rowClass({ row }) {
 .score-num { font-weight: 700; font-size: 14px; min-width: 34px; text-align: right; }
 .script-text { font-size: 13px; color: #606266; line-height: 1.4; }
 .muted { color: #c0c4cc; }
+.peak-text { font-size: 13px; color: #606266; }
+.income-text { font-size: 13px; font-weight: 500; }
+.income-base { color: #303133; }
+.income-bonus { color: #67c23a; font-size: 12px; margin-left: 2px; }
 .table-footer { display: flex; justify-content: space-between; align-items: center; margin-top: 14px; }
 .footer-info { font-size: 13px; color: #909399; }
 :deep(.row-agreed) { background: #f0f9eb !important; }

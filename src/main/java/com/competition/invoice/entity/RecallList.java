@@ -27,12 +27,6 @@ public class RecallList {
     private BigDecimal recallScore;
     private String scoreReason;
 
-    /** 人设标签 */
-    private String personaTag;
-
-    /** 人设置信度 */
-    private BigDecimal personaConfidence;
-
     /** 个性化召回话术 */
     private String strategyScript;
 

@@ -11,11 +11,13 @@ import com.competition.invoice.service.external.NeuralNetworkClient.InferenceRes
 import com.competition.invoice.service.pipeline.FeatureEngineeringService.RawFields;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -42,14 +44,24 @@ public class Step3_NeuralNetwork {
 
     private static final int BATCH_SIZE = 100;
 
+    @Value("${recall.supply-demand-ratio-threshold:1.5}")
+    private BigDecimal sdThreshold;
+
+    @Value("${recall.recent-active-days:7}")
+    private int recentDays;
+
     @Transactional(rollbackFor = Exception.class)
     public int execute(LocalDate dataDate, Long pipelineRunId) {
         log.info("[Step3] 开始特征工程 + NN推理, dataDate={}", dataDate);
 
-        // 1. 读取当天所有司机快照
+        // 1. 只读取通过 Step2 同等过滤条件的司机
+        LocalDateTime orderCutoff = dataDate.atStartOfDay().minusDays(recentDays);
         List<DriverDailySnapshot> snapshots = snapshotMapper.selectList(
                 new LambdaQueryWrapper<DriverDailySnapshot>()
-                        .eq(DriverDailySnapshot::getSnapshotDate, dataDate));
+                        .eq(DriverDailySnapshot::getSnapshotDate, dataDate)
+                        .ge(DriverDailySnapshot::getOnlineCount7d, 1)
+                        .ge(DriverDailySnapshot::getLastOrderTime, orderCutoff)
+                        .ge(DriverDailySnapshot::getSupplyDemandRatio, sdThreshold));
 
         if (snapshots.isEmpty()) {
             log.warn("[Step3] 无司机数据");

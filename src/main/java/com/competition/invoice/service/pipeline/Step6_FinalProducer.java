@@ -65,7 +65,7 @@ public class Step6_FinalProducer {
 
         // 预期成功率（高潜力司机中已生成策略的占比，初始默认可按 38% 估算）
         long hasStrategy = allRecalls.stream()
-                .filter(r -> r.getPersonaTag() != null)
+                .filter(r -> r.getStrategyScript() != null)
                 .count();
         BigDecimal expectedRate = totalCount > 0
                 ? BigDecimal.valueOf(hasStrategy).divide(BigDecimal.valueOf(totalCount), 4, RoundingMode.HALF_UP)
@@ -87,9 +87,8 @@ public class Step6_FinalProducer {
                 : BigDecimal.ZERO;
         kpi.setImprovementPct(improvement);
 
-        // 分布数据
+        // 状态分布
         try {
-            kpi.setPersonaDistribution(objectMapper.writeValueAsString(buildPersonaDist(allRecalls)));
             kpi.setStatusDistribution(objectMapper.writeValueAsString(buildStatusDist(allRecalls)));
         } catch (Exception e) {
             log.warn("分布数据序列化失败", e);
@@ -127,16 +126,6 @@ public class Step6_FinalProducer {
 
         log.info("[Step6] 完成, 总数={}, 高潜力={}", totalCount, highPotentialCount);
         return totalCount;
-    }
-
-    private Map<String, Long> buildPersonaDist(List<RecallList> recalls) {
-        Map<String, Long> dist = new HashMap<>();
-        for (RecallList r : recalls) {
-            if (r.getPersonaTag() != null) {
-                dist.merge(r.getPersonaTag(), 1L, Long::sum);
-            }
-        }
-        return dist;
     }
 
     private Map<String, Long> buildStatusDist(List<RecallList> recalls) {

@@ -81,7 +81,6 @@ public class Step1_DataPuller {
         e.setPhone(row.getPhone());
         e.setOnlineCount7d(row.getOnlineCount7d());
         e.setLastOrderTime(row.getLastOrderTime());
-        e.setH3Index(row.getH3Index());
         e.setSupplyDemandRatio(row.getSupplyDemandRatio());
         e.setAvgOrderAmount(row.getAvgOrderAmount());
         e.setAvgRating(row.getAvgRating());
